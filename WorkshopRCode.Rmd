@@ -1,0 +1,175 @@
+---
+title: "Importing and Graphing Network Data"
+author: "Dr. Tracy Sweet"
+date: 
+output: html_document
+---
+
+
+## Importing from a Previously Saved R Workspace
+We'll import some network data. 
+
+```{r}
+load("WorkshopData.Rdata")
+```
+
+# Plotting Network Data in R
+Now that we have our data into R, the easiest way to plot our data in R is to use the igraph package.  We also have to create igraph objects.
+
+
+## Making an Igraph Object
+```{r}
+library(igraph)
+teachergraph=graph.adjacency(as.matrix(Ela9Network), mode="directed")
+authorgraph=graph.adjacency(as.matrix(authornet), mode="undirected")
+```
+
+
+## Using the Igraph Default Plot
+
+Sometimes the default ploting function makes perfectly adequate plots and other times, the plots are terrible.  You be the judge.
+```{r}
+plot(teachergraph)
+plot(authorgraph)
+
+```
+
+
+## Let's redo the teacher plot with some changes
+```{r}
+plot(teachergraph, vertex.size=15, vertex.color="orange", vertex.frame.color="NA", edge.width=1, vextex.label=1:13)
+
+plot(teachergraph, vertex.size=8, vertex.label=NA, vertex.color="darkgreen", vertex.frame.color="NA", edge.arrow.size=0.5,  edge.curved=0.2)
+
+## What is I wanted to save the node positions?
+coords=layout_with_fr(teachergraph) ## this is the most common layout
+plot(teachergraph, vertex.size=15, vertex.frame.color=NA,  vertex.color="darkgreen", vertex.label.color="white", edge.arrow.size=0.5, layout=coords)
+
+## To remove arrows
+plot(teachergraph, vertex.size=15, vertex.frame.color=NA, vertex.label=1:24, vertex.color="darkgreen", vertex.label.color="white", vertex.label=1:24, edge.arrow.size=0.5, layout=coords, edge.arrow.mode=0)
+
+## To color the nodes based on grade taught
+mycolors=rainbow(8)
+plot(teachergraph, vertex.size=15, vertex.frame.color=NA, vertex.label=1:24, vertex.color=mycolors[Teacher9$grade], vertex.label.color="white", vertex.label=1:24, edge.arrow.size=0.5, layout=coords, edge.arrow.mode=0)
+## We can then save these plots as pdfs!
+```
+
+
+
+## Redoing the CoAuthorship Network with some changes
+```{r}
+plot(authorgraph, vertex.size=12, vertex.frame.color=NA, vertex.color="gold", vertex.label=NA, edge.arrow.mode=0)
+
+coords=layout_nicely(authorgraph) 
+plot(authorgraph, vertex.size=12, vertex.frame.color=NA, vertex.color="gold", vertex.label=NA, edge.arrow.mode=0, layout=coords)
+## Sometimes it doesn't always work and just rerunning the code will get you a nicer looking plot.
+
+## Leaders are bigger
+plot(authorgraph, vertex.size=authordf$YrsPostPhD, vertex.frame.color=NA,
+    vertex.color="gold", vertex.label=NA, edge.arrow.mode=0)
+
+## Faculty are colored differently
+mycolors=c("gold", "red")
+faculty=authordf$CurrentFaculty+1
+plot(authorgraph, vertex.size=15, vertex.frame.color=NA,
+    vertex.color=mycolors[faculty], vertex.label=NA, edge.arrow.mode=0)
+
+```
+
+## Descriptive Statistics 
+
+### Describing the Network
+Density, reciprocity and transitivity
+```{r}
+teachergraph=graph.adjacency(Ela9Network)
+edge_density(teachergraph)
+edge_density(authorgraph)
+reciprocity(teachergraph)
+
+## Remember this transitivity
+## function forces all ties to bidirectional!
+transitivity(teachergraph)
+transitivity(authorgraph)
+
+```
+
+
+### Describing the Nodes
+
+
+To calculate degree, use the argument "mode" to determine whether you want to calculate in-degree, out-degree or degree (sum of in and out).  Recall that in and out degree are for directed networks only.What you get is the in-, out-, or total degree for each node.  Note that if you don't select a mode, you get the sum by default.
+```{r}
+degree(teachergraph, mode="in")
+degree(teachergraph, mode="out")
+degree(authorgraph)
+```
+
+Closeness and betweenness are also directional since it's based on the distance between pairs of nodes.  
+```{r}
+## Recall that closeness and betweenness don't work well for disconnected graphs
+closeness(teachergraph, mode="out") 
+betweenness(teachergraph, directed=TRUE)
+betweenness(authorgraph, directed=FALSE)
+
+```
+
+
+### Edge Statistics
+There are a number of distance functions in igraph.
+See http://igraph.org/r/doc/distances.html for more information.
+To calculate the geodesic distance (shortest path) between every pair of nodes.
+```{r}
+## We typically use out for geodesic distance for directed networks 
+distances(teachergraph, mode="out")
+## Note you can choose "in" or "all"
+## the default option is "all" which is 
+## appropriate for undirected networks
+```
+
+
+
+## Community Detection
+```{r}
+library(igraph)
+teachergraph=graph.adjacency(Ela9Network)
+```
+
+### Random Walk Community Detection
+```{r}
+wtc=cluster_walktrap(teachergraph, steps=4)
+
+## membership returns a membership id for each node
+wtc.membership=membership(wtc)
+wtc.membership
+
+## communities returns a list of node names in each block
+communities(wtc)
+
+plot(teachergraph, vertex.color=wtc.membership, vertex.size=12)
+
+## Let's try this again with a larger number of steps
+wtc=cluster_walktrap(teachergraph, steps=6)
+wtc.membership2=membership(wtc)
+plot(teachergraph, vertex.color=wtc.membership2, vertex.size=12)
+```
+
+### Edge Betweenness
+```{r}
+ebc=cluster_edge_betweenness(teachergraph)
+## Notice that the membership for the highest modularity is returned ##
+membership(ebc)
+ebc.membership=membership(ebc)
+plot(teachergraph, vertex.color=ebc.membership, vertex.size=12)
+```
+
+### Fast Greedy
+We'll need to change the network slightly so we can work with this algorithm.  Let's change the network.
+```{r}
+teachergraph2=graph.adjacency(Ela9Network, mode="undirected")
+fgc=cluster_fast_greedy(teachergraph2)
+fgc.membership=membership(fgc)
+plot(teachergraph2, vertex.color=fgc.membership, vertex.size=12)
+
+```
+
+
